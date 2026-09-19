@@ -11,9 +11,15 @@
     ],
     "require": {
         "php": "^8.2",
+        "illuminate/database": "^11.44|^12.0",
+        "illuminate/hashing": "^11.44|^12.0",
+        "illuminate/http": "^11.44|^12.0",
+        "illuminate/redis": "^11.44|^12.0",
+        "illuminate/routing": "^11.44|^12.0",
         "illuminate/support": "^11.44|^12.0"
     },
     "require-dev": {
+        "mockery/mockery": "^1.6",
         "pestphp/pest": "^2.0|^3.0",
         "orchestra/testbench": "^9.13|^10.0"
     },
