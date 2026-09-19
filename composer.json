@@ -1,0 +1,47 @@
+{
+    "name": "alexvdev/corvant",
+    "description": "Identity & Access Management library for Laravel — authentication, MFA, RBAC, multi-tenancy, sessions and audit log, embedded as a package.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alex Valverde",
+            "email": "alexvalverde.dev@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.44|^12.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^2.0|^3.0",
+        "orchestra/testbench": "^9.13|^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Corvant\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Corvant\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Corvant\\Infrastructure\\CorvantServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/pest"
+    }
+}
