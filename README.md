@@ -15,6 +15,17 @@ Corvant is designed to be embedded as a Composer dependency inside a Laravel app
 composer require alexvdev/corvant
 ```
 
+## Development (Docker)
+
+This repo has no local PHP/Composer installation; everything runs through Docker.
+
+```bash
+docker compose build
+docker compose run --rm app composer install
+docker compose up -d mysql pgsql redis
+docker compose run --rm app vendor/bin/pest
+```
+
 ## Status
 
 Early scaffolding — no released version yet. No authentication, MFA, or RBAC functionality is implemented.
