@@ -1,0 +1,18 @@
+/.atl/
+/vendor/
+/node_modules/
+/.idea/
+/.vscode/
+.DS_Store
+.env
+.phpunit.cache/
+composer.lock
+
+# IA Tools
+/.claude/*
+/.cursor/*
+/odd/*
+
+/AGENTS.md
+/CLAUDE.md
+/corvant-project-context.md
