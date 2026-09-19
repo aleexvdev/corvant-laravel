@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      - mysql
+      - pgsql
+      - redis
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: corvant_testing
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: corvant
+      MYSQL_PASSWORD: secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  pgsql:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: corvant_testing
+      POSTGRES_USER: corvant
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgsql-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  mysql-data:
+  pgsql-data:
