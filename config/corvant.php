@@ -10,4 +10,8 @@ return [
     'session' => [
         'ttl_seconds' => (int) env('CORVANT_SESSION_TTL_SECONDS', 3600),
     ],
+
+    'tenancy' => [
+        'header' => env('CORVANT_TENANT_HEADER', 'X-Tenant-ID'),
+    ],
 ];

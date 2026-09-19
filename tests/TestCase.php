@@ -62,5 +62,6 @@ abstract class TestCase extends OrchestraTestCase
 
         $app['config']->set('corvant.password.min_length', 8);
         $app['config']->set('corvant.session.ttl_seconds', 3600);
+        $app['config']->set('corvant.tenancy.header', 'X-Tenant-ID');
     }
 }

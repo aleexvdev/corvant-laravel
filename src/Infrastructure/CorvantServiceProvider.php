@@ -4,14 +4,22 @@ declare(strict_types=1);
 
 namespace Corvant\Infrastructure;
 
+use Corvant\Adapters\Http\HeaderTenantResolver;
+use Corvant\Adapters\Persistence\EloquentTenantRepository;
 use Corvant\Adapters\Persistence\EloquentUserRepository;
 use Corvant\Adapters\Security\LaravelHasher;
 use Corvant\Adapters\Session\RedisSessionStore;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
+use Corvant\Domain\Tenancy\Services\TenancyService;
+use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
+use Corvant\Infrastructure\Tenancy\CurrentTenant;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
+use Corvant\Ports\TenantRepositoryPort;
+use Corvant\Ports\TenantResolverPort;
 use Corvant\Ports\UserRepositoryPort;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 
 class CorvantServiceProvider extends ServiceProvider
@@ -31,11 +39,26 @@ class CorvantServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(AuthenticationService::class);
+
+        $this->app->bind(TenantRepositoryPort::class, EloquentTenantRepository::class);
+
+        $this->app->bind(TenantResolverPort::class, function ($app): HeaderTenantResolver {
+            return new HeaderTenantResolver(
+                (string) $app['config']->get('corvant.tenancy.header', 'X-Tenant-ID'),
+            );
+        });
+
+        $this->app->scoped(CurrentTenant::class);
+
+        $this->app->singleton(TenancyService::class);
     }
 
     public function boot(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../../routes/api.php');
+
+        $router = $this->app->make(Router::class);
+        $router->aliasMiddleware('corvant.resolve-tenant', ResolveTenantMiddleware::class);
 
         $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
 
