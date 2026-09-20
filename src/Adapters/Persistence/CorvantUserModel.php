@@ -20,6 +20,11 @@ final class CorvantUserModel extends Model
         'password',
         'name',
         'email_verified_at',
+        'avatar_url',
+        'locale',
+        'timezone',
+        'phone',
+        'pending_email',
     ];
 
     protected $casts = [

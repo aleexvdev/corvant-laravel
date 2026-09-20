@@ -62,6 +62,7 @@ class CorvantServiceProvider extends ServiceProvider
                 $app->make(NotificationPort::class),
                 (int) $app['config']->get('corvant.password_reset.ttl_seconds', 3600),
                 (int) $app['config']->get('corvant.email_verification.ttl_seconds', 86400),
+                (int) $app['config']->get('corvant.email_change.ttl_seconds', 86400),
             );
         });
 

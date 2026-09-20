@@ -6,6 +6,7 @@ use Corvant\Infrastructure\Http\Controllers\AuthController;
 use Corvant\Infrastructure\Http\Controllers\PermissionController;
 use Corvant\Infrastructure\Http\Controllers\RoleController;
 use Corvant\Infrastructure\Http\Controllers\TenantController;
+use Corvant\Infrastructure\Http\Controllers\UserController;
 use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,16 @@ Route::post('tenants', [TenantController::class, 'store'])
     ->middleware(AuthenticateSessionMiddleware::class);
 
 Route::get('users/{userId}/tenants', [TenantController::class, 'forUser']);
+
+Route::middleware([AuthenticateSessionMiddleware::class])->prefix('users/me')->group(function (): void {
+    Route::get('/', [UserController::class, 'me']);
+    Route::put('/', [UserController::class, 'update']);
+    Route::put('email', [UserController::class, 'updateEmail']);
+    Route::post('email/confirm', [UserController::class, 'confirmEmail']);
+    Route::put('phone', [UserController::class, 'updatePhone']);
+    Route::put('password', [UserController::class, 'updatePassword']);
+    Route::delete('/', [UserController::class, 'destroy']);
+});
 
 Route::prefix('auth')->group(function (): void {
     Route::post('register', [AuthController::class, 'register']);

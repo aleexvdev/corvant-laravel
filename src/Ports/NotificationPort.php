@@ -11,4 +11,6 @@ interface NotificationPort
     public function sendPasswordResetLink(Email $to, string $token): void;
 
     public function sendEmailVerificationLink(Email $to, string $token): void;
+
+    public function sendEmailChangeConfirmationLink(Email $to, string $token): void;
 }
