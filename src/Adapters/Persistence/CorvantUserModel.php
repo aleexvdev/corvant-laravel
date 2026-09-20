@@ -25,14 +25,20 @@ final class CorvantUserModel extends Model
         'timezone',
         'phone',
         'pending_email',
+        'totp_secret',
+        'pending_totp_secret',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'totp_secret' => 'encrypted',
+        'pending_totp_secret' => 'encrypted',
     ];
 
     protected $hidden = [
         'password',
+        'totp_secret',
+        'pending_totp_secret',
     ];
 
     public function roles(): BelongsToMany

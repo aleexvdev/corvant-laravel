@@ -26,4 +26,10 @@ return [
     'tenancy' => [
         'header' => env('CORVANT_TENANT_HEADER', 'X-Tenant-ID'),
     ],
+
+    'mfa' => [
+        'challenge_ttl_seconds' => (int) env('CORVANT_MFA_CHALLENGE_TTL_SECONDS', 300),
+        'recovery_codes_count' => (int) env('CORVANT_MFA_RECOVERY_CODES_COUNT', 10),
+        'issuer' => env('CORVANT_MFA_ISSUER', 'Corvant'),
+    ],
 ];

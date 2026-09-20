@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Corvant\Infrastructure\Http\Controllers\AuthController;
+use Corvant\Infrastructure\Http\Controllers\MfaController;
 use Corvant\Infrastructure\Http\Controllers\PermissionController;
 use Corvant\Infrastructure\Http\Controllers\RoleController;
 use Corvant\Infrastructure\Http\Controllers\TenantController;
@@ -27,6 +28,18 @@ Route::middleware([AuthenticateSessionMiddleware::class])->prefix('users/me')->g
     Route::put('phone', [UserController::class, 'updatePhone']);
     Route::put('password', [UserController::class, 'updatePassword']);
     Route::delete('/', [UserController::class, 'destroy']);
+});
+
+Route::prefix('mfa')->group(function (): void {
+    Route::post('totp/verify', [MfaController::class, 'verify']);
+    Route::post('recovery-codes/use', [MfaController::class, 'useRecoveryCode']);
+
+    Route::middleware([AuthenticateSessionMiddleware::class])->group(function (): void {
+        Route::post('totp/enable', [MfaController::class, 'enable']);
+        Route::post('totp/confirm', [MfaController::class, 'confirm']);
+        Route::post('totp/disable', [MfaController::class, 'disable']);
+        Route::get('recovery-codes', [MfaController::class, 'recoveryCodes']);
+    });
 });
 
 Route::prefix('auth')->group(function (): void {

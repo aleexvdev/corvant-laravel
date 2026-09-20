@@ -53,6 +53,8 @@ final class EloquentUserRepository implements UserRepositoryPort
             'timezone' => $user->timezone(),
             'phone' => $user->phone(),
             'pending_email' => $user->pendingEmail()?->value(),
+            'totp_secret' => $user->totpSecret(),
+            'pending_totp_secret' => $user->pendingTotpSecret(),
         ];
 
         if ($user->id() !== null) {
@@ -104,6 +106,8 @@ final class EloquentUserRepository implements UserRepositoryPort
             $model->timezone,
             $model->phone,
             $pendingEmail,
+            $model->totp_secret,
+            $model->pending_totp_secret,
         );
     }
 }

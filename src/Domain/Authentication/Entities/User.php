@@ -22,6 +22,8 @@ final class User
         private ?string $timezone = null,
         private ?string $phone = null,
         private ?Email $pendingEmail = null,
+        private ?string $totpSecret = null,
+        private ?string $pendingTotpSecret = null,
     ) {}
 
     public static function register(
@@ -71,6 +73,47 @@ final class User
         return $this->copy(pendingEmail: $pendingEmail);
     }
 
+    public function withPendingTotpSecret(?string $pendingTotpSecret): self
+    {
+        return $this->copy(pendingTotpSecret: $pendingTotpSecret);
+    }
+
+    public function withConfirmedTotpSecret(string $totpSecret): self
+    {
+        return new self(
+            $this->id,
+            $this->email,
+            $this->password,
+            $this->name,
+            $this->emailVerifiedAt,
+            $this->avatarUrl,
+            $this->locale,
+            $this->timezone,
+            $this->phone,
+            $this->pendingEmail,
+            $totpSecret,
+            null,
+        );
+    }
+
+    public function withMfaDisabled(): self
+    {
+        return new self(
+            $this->id,
+            $this->email,
+            $this->password,
+            $this->name,
+            $this->emailVerifiedAt,
+            $this->avatarUrl,
+            $this->locale,
+            $this->timezone,
+            $this->phone,
+            $this->pendingEmail,
+            null,
+            null,
+        );
+    }
+
     public function withConfirmedEmailChange(): self
     {
         if ($this->pendingEmail === null) {
@@ -88,6 +131,8 @@ final class User
             $this->timezone,
             $this->phone,
             null,
+            $this->totpSecret,
+            $this->pendingTotpSecret,
         );
     }
 
@@ -146,6 +191,21 @@ final class User
         return $this->emailVerifiedAt !== null;
     }
 
+    public function totpSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function pendingTotpSecret(): ?string
+    {
+        return $this->pendingTotpSecret;
+    }
+
+    public function hasMfaEnabled(): bool
+    {
+        return $this->totpSecret !== null;
+    }
+
     private function copy(
         ?int $id = null,
         ?Email $email = null,
@@ -157,6 +217,8 @@ final class User
         ?string $timezone = null,
         ?string $phone = null,
         ?Email $pendingEmail = null,
+        ?string $totpSecret = null,
+        ?string $pendingTotpSecret = null,
     ): self {
         return new self(
             $id ?? $this->id,
@@ -169,6 +231,8 @@ final class User
             $timezone ?? $this->timezone,
             $phone ?? $this->phone,
             $pendingEmail ?? $this->pendingEmail,
+            $totpSecret ?? $this->totpSecret,
+            $pendingTotpSecret ?? $this->pendingTotpSecret,
         );
     }
 }

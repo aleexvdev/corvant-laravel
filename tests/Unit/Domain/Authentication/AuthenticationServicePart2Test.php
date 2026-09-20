@@ -21,7 +21,17 @@ function makeAuthenticationServicePart2(
     SingleUseTokenPort $singleUseTokens,
     NotificationPort $notifications,
 ): AuthenticationService {
-    return new AuthenticationService($users, $sessions, $hasher, $singleUseTokens, $notifications, 3600, 86400, 86400);
+    return new AuthenticationService(
+        $users,
+        $sessions,
+        Mockery::mock(\Corvant\Ports\MfaChallengePort::class),
+        $hasher,
+        $singleUseTokens,
+        $notifications,
+        3600,
+        86400,
+        86400,
+    );
 }
 
 it('rotates the session token on refresh and revokes the old one', function (): void {

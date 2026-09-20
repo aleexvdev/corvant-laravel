@@ -22,7 +22,17 @@ function makeProfileAuthenticationService(
     SingleUseTokenPort $tokens,
     NotificationPort $notifications,
 ): AuthenticationService {
-    return new AuthenticationService($users, $sessions, $hasher, $tokens, $notifications, 3600, 86400, 86400);
+    return new AuthenticationService(
+        $users,
+        $sessions,
+        Mockery::mock(\Corvant\Ports\MfaChallengePort::class),
+        $hasher,
+        $tokens,
+        $notifications,
+        3600,
+        86400,
+        86400,
+    );
 }
 
 it('updates only profile fields via updateProfile', function (): void {

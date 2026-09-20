@@ -9,6 +9,8 @@ use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
+use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
+use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
@@ -21,10 +23,12 @@ function makeAuthenticationService(
     PasswordHasherPort $hasher,
     ?SingleUseTokenPort $singleUseTokens = null,
     ?NotificationPort $notifications = null,
+    ?MfaChallengePort $mfaChallenges = null,
 ): AuthenticationService {
     return new AuthenticationService(
         $users,
         $sessions,
+        $mfaChallenges ?? Mockery::mock(MfaChallengePort::class),
         $hasher,
         $singleUseTokens ?? Mockery::mock(SingleUseTokenPort::class),
         $notifications ?? Mockery::mock(NotificationPort::class),
@@ -95,6 +99,47 @@ it('logs in and returns a session for valid credentials', function (): void {
     $result = $service->login($email, 'correct');
 
     expect($result->token())->toBe('token-abc');
+});
+
+it('throws MfaChallengeRequiredException when MFA is enabled instead of creating a session', function (): void {
+    $email = new Email('mfa@example.com');
+    $stored = new User(
+        10,
+        $email,
+        new HashedPassword('stored-hash'),
+        'User',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'totp-secret-value',
+        null,
+    );
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('findByEmail')->once()->with($email)->andReturn($stored);
+
+    $hasher = Mockery::mock(PasswordHasherPort::class);
+    $hasher->shouldReceive('verify')->once()->with('correct', 'stored-hash')->andReturn(true);
+
+    $sessions = Mockery::mock(SessionStorePort::class);
+    $sessions->shouldReceive('create')->never();
+
+    $mfaChallenges = Mockery::mock(MfaChallengePort::class);
+    $mfaChallenges->shouldReceive('create')->once()->with($stored)->andReturn(
+        new \Corvant\Domain\Authentication\ValueObjects\MfaChallenge('challenge-token', 10, new DateTimeImmutable('+5 minutes')),
+    );
+
+    $service = makeAuthenticationService($users, $sessions, $hasher, mfaChallenges: $mfaChallenges);
+
+    try {
+        $service->login($email, 'correct');
+        expect(false)->toBeTrue('Expected MfaChallengeRequiredException');
+    } catch (MfaChallengeRequiredException $e) {
+        expect($e->challengeToken())->toBe('challenge-token');
+    }
 });
 
 it('rejects login with wrong password', function (): void {
