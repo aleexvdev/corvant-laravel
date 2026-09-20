@@ -8,6 +8,7 @@ use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidEmailException;
 use Corvant\Domain\Authentication\Exceptions\InvalidOrExpiredTokenException;
+use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Infrastructure\Authentication\CurrentUser;
@@ -58,6 +59,11 @@ final class AuthController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (InvalidCredentialsException) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
+        } catch (MfaChallengeRequiredException $e) {
+            return response()->json([
+                'mfa_required' => true,
+                'challenge_token' => $e->challengeToken(),
+            ]);
         }
 
         return response()->json([

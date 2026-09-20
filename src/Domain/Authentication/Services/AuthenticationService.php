@@ -8,9 +8,11 @@ use Corvant\Domain\Authentication\Entities\User;
 use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidOrExpiredTokenException;
+use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
+use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
@@ -29,6 +31,7 @@ final class AuthenticationService
     public function __construct(
         private UserRepositoryPort $users,
         private SessionStorePort $sessions,
+        private MfaChallengePort $mfaChallenges,
         private PasswordHasherPort $hasher,
         private SingleUseTokenPort $singleUseTokens,
         private NotificationPort $notifications,
@@ -55,6 +58,11 @@ final class AuthenticationService
 
         if ($user === null || ! $this->hasher->verify($plainPassword, $user->password()->hash())) {
             throw new InvalidCredentialsException();
+        }
+
+        if ($user->hasMfaEnabled()) {
+            $challenge = $this->mfaChallenges->create($user);
+            throw new MfaChallengeRequiredException($challenge->token());
         }
 
         return $this->sessions->create($user);

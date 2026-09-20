@@ -17,7 +17,8 @@
         "illuminate/mail": "^11.44|^12.0",
         "illuminate/redis": "^11.44|^12.0",
         "illuminate/routing": "^11.44|^12.0",
-        "illuminate/support": "^11.44|^12.0"
+        "illuminate/support": "^11.44|^12.0",
+        "pragmarx/google2fa": "^8.0"
     },
     "require-dev": {
         "mockery/mockery": "^1.6",
