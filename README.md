@@ -177,12 +177,6 @@ push and pull request — see [`.github/workflows/tests.yml`](.github/workflows/
   before the user lookup even happens.
 - Found a security issue? Please open a private report rather than a public issue.
 
-## Roadmap
-
-Laravel v1 (this repo) is feature-complete. A conceptually-equivalent but independently
-implemented **NestJS** package (`@corvant/nestjs`) is a possible future phase — it would not
-share code with this package, only the underlying design.
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
