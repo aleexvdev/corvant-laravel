@@ -16,4 +16,8 @@ interface TenantRepositoryPort
      * @return list<Tenant>
      */
     public function tenantsForUser(int $userId): array;
+
+    public function save(Tenant $tenant): Tenant;
+
+    public function addMember(int $tenantId, int $userId): void;
 }

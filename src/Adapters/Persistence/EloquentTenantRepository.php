@@ -46,6 +46,33 @@ final class EloquentTenantRepository implements TenantRepositoryPort
             ->all();
     }
 
+    public function save(Tenant $tenant): Tenant
+    {
+        if ($tenant->id() !== null) {
+            $model = CorvantTenantModel::query()->findOrFail($tenant->id());
+            $model->fill([
+                'name' => $tenant->name(),
+                'slug' => $tenant->slug()->value(),
+            ]);
+            $model->save();
+
+            return $this->toDomain($model);
+        }
+
+        $model = CorvantTenantModel::query()->create([
+            'name' => $tenant->name(),
+            'slug' => $tenant->slug()->value(),
+        ]);
+
+        return $this->toDomain($model);
+    }
+
+    public function addMember(int $tenantId, int $userId): void
+    {
+        $model = CorvantTenantModel::query()->findOrFail($tenantId);
+        $model->users()->syncWithoutDetaching([$userId]);
+    }
+
     private function toDomain(CorvantTenantModel $model): Tenant
     {
         return new Tenant(

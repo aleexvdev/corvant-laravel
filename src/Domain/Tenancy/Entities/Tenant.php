@@ -14,6 +14,11 @@ final class Tenant
         private TenantSlug $slug,
     ) {}
 
+    public static function create(string $name, TenantSlug $slug): self
+    {
+        return new self(null, $name, $slug);
+    }
+
     public function withId(int $id): self
     {
         return new self($id, $this->name, $this->slug);
