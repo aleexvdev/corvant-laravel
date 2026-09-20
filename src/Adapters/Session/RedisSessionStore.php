@@ -14,6 +14,8 @@ final class RedisSessionStore implements SessionStorePort
 {
     private const KEY_PREFIX = 'corvant:session:';
 
+    private const USER_INDEX_PREFIX = 'corvant:user-sessions:';
+
     public function __construct(
         private RedisFactory $redis,
         private int $ttlSeconds,
@@ -40,6 +42,8 @@ final class RedisSessionStore implements SessionStorePort
             $payload,
         );
 
+        $this->connection()->sadd($this->userSessionsKey($userId), $token);
+
         return new Session($token, $userId, $expiresAt);
     }
 
@@ -61,7 +65,41 @@ final class RedisSessionStore implements SessionStorePort
 
     public function revoke(string $token): void
     {
+        $session = $this->find($token);
+        if ($session === null) {
+            return;
+        }
+
         $this->connection()->del(self::KEY_PREFIX.$token);
+        $this->connection()->srem($this->userSessionsKey($session->userId()), $token);
+    }
+
+    public function allForUser(int $userId): array
+    {
+        $tokens = $this->connection()->smembers($this->userSessionsKey($userId));
+        if ($tokens === false || $tokens === []) {
+            return [];
+        }
+
+        $sessions = [];
+
+        foreach ($tokens as $token) {
+            $session = $this->find((string) $token);
+            if ($session === null) {
+                $this->connection()->srem($this->userSessionsKey($userId), (string) $token);
+
+                continue;
+            }
+
+            $sessions[] = $session;
+        }
+
+        return $sessions;
+    }
+
+    private function userSessionsKey(int $userId): string
+    {
+        return self::USER_INDEX_PREFIX.$userId;
     }
 
     private function connection(): \Illuminate\Redis\Connections\Connection

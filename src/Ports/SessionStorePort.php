@@ -14,4 +14,9 @@ interface SessionStorePort
     public function find(string $token): ?Session;
 
     public function revoke(string $token): void;
+
+    /**
+     * @return list<Session>
+     */
+    public function allForUser(int $userId): array;
 }

@@ -6,6 +6,7 @@ use Corvant\Infrastructure\Http\Controllers\AuthController;
 use Corvant\Infrastructure\Http\Controllers\MfaController;
 use Corvant\Infrastructure\Http\Controllers\PermissionController;
 use Corvant\Infrastructure\Http\Controllers\RoleController;
+use Corvant\Infrastructure\Http\Controllers\SessionController;
 use Corvant\Infrastructure\Http\Controllers\TenantController;
 use Corvant\Infrastructure\Http\Controllers\UserController;
 use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
@@ -40,6 +41,12 @@ Route::prefix('mfa')->group(function (): void {
         Route::post('totp/disable', [MfaController::class, 'disable']);
         Route::get('recovery-codes', [MfaController::class, 'recoveryCodes']);
     });
+});
+
+Route::middleware([AuthenticateSessionMiddleware::class])->prefix('sessions')->group(function (): void {
+    Route::get('/', [SessionController::class, 'index']);
+    Route::delete('/', [SessionController::class, 'destroyOthers']);
+    Route::delete('{id}', [SessionController::class, 'destroy']);
 });
 
 Route::prefix('auth')->group(function (): void {

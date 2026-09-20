@@ -28,4 +28,9 @@ final readonly class Session
     {
         return $this->expiresAt;
     }
+
+    public function id(): string
+    {
+        return hash('sha256', $this->token);
+    }
 }
