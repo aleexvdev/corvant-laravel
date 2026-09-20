@@ -1,6 +1,7 @@
 # Corvant
 
 [![Tests](https://github.com/aleexvdev/corvant-laravel/actions/workflows/tests.yml/badge.svg)](https://github.com/aleexvdev/corvant-laravel/actions/workflows/tests.yml)
+[![Packagist Version](https://img.shields.io/packagist/v/aleexvdev/corvant)](https://packagist.org/packages/aleexvdev/corvant)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-777bb4)](https://www.php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-11.44%2B%20%7C%2012-ff2d20)](https://laravel.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -62,7 +63,7 @@ src/
 ## Installation
 
 ```bash
-composer require alexvdev/corvant
+composer require aleexvdev/corvant
 php artisan vendor:publish --tag=corvant-migrations
 php artisan migrate
 php artisan vendor:publish --tag=corvant-config
