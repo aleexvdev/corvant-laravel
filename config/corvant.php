@@ -45,4 +45,10 @@ return [
         'recovery_codes_count' => (int) env('CORVANT_MFA_RECOVERY_CODES_COUNT', 10),
         'issuer' => env('CORVANT_MFA_ISSUER', 'Corvant'),
     ],
+
+    'notifications' => [
+        'password_reset_url' => env('CORVANT_PASSWORD_RESET_URL'),
+        'email_verification_url' => env('CORVANT_EMAIL_VERIFICATION_URL'),
+        'email_change_confirmation_url' => env('CORVANT_EMAIL_CHANGE_CONFIRMATION_URL'),
+    ],
 ];

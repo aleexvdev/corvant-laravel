@@ -162,6 +162,8 @@ class CorvantServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
 
+        $this->loadViewsFrom(__DIR__.'/../../resources/views', 'corvant');
+
         $this->publishes([
             __DIR__.'/../../config/corvant.php' => config_path('corvant.php'),
         ], 'corvant-config');
