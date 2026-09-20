@@ -14,6 +14,7 @@ use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Rbac\Services\PermissionResolver;
 use Corvant\Domain\Rbac\Services\RoleService;
 use Corvant\Domain\Tenancy\Services\TenancyService;
+use Corvant\Domain\Tenancy\Services\TenantProvisioningService;
 use Corvant\Infrastructure\Authentication\CurrentUser;
 use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\PermissionMiddleware;
@@ -59,6 +60,7 @@ class CorvantServiceProvider extends ServiceProvider
         $this->app->scoped(CurrentUser::class);
 
         $this->app->singleton(TenancyService::class);
+        $this->app->singleton(TenantProvisioningService::class);
 
         $this->app->bind(RoleRepositoryPort::class, EloquentRoleRepository::class);
         $this->app->singleton(PermissionResolver::class);

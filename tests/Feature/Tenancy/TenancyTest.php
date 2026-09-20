@@ -80,3 +80,71 @@ it('returns empty list when user has no tenant memberships', function (): void {
         ->assertOk()
         ->assertJson(['data' => []]);
 });
+
+/**
+ * @return array<string, string>
+ */
+function tenancyAuthHeaders(CorvantUserModel $user): array
+{
+    $login = test()->postJson('/auth/login', [
+        'email' => $user->email,
+        'password' => 'password123',
+    ]);
+
+    return [
+        'Authorization' => 'Bearer '.$login->json('token'),
+    ];
+}
+
+it('creates a tenant with structural roles via POST /tenants', function (): void {
+    $user = createCorvantUser('provisioner@example.com');
+    $headers = tenancyAuthHeaders($user);
+
+    $response = $this->postJson('/tenants', [
+        'name' => 'Provisioned Inc',
+        'slug' => 'provisioned-inc',
+    ], $headers);
+
+    $response->assertCreated()
+        ->assertJsonPath('tenant.slug', 'provisioned-inc')
+        ->assertJsonCount(4, 'roles');
+
+    expect($response->json('roles'))->toEqualCanonicalizing([
+        'Owner',
+        'Member',
+        'Auditor',
+        'Guest',
+    ]);
+
+    $tenantId = $response->json('tenant.id');
+
+    $this->getJson('/users/'.$user->getKey().'/tenants')
+        ->assertOk()
+        ->assertJsonFragment(['slug' => 'provisioned-inc']);
+
+    $tenantHeaders = array_merge($headers, ['X-Tenant-ID' => (string) $tenantId]);
+
+    $roles = $this->getJson('/roles', $tenantHeaders)
+        ->assertOk()
+        ->assertJsonCount(4, 'data')
+        ->json('data');
+
+    $ownerRoleId = collect($roles)->firstWhere('name', 'Owner')['id'];
+
+    expect($user->roles()->whereKey($ownerRoleId)->exists())->toBeTrue();
+});
+
+it('rejects duplicate tenant slug on POST /tenants with 422', function (): void {
+    $user = createCorvantUser('dup-slug@example.com');
+    $headers = tenancyAuthHeaders($user);
+
+    $this->postJson('/tenants', [
+        'name' => 'First Org',
+        'slug' => 'same-slug',
+    ], $headers)->assertCreated();
+
+    $this->postJson('/tenants', [
+        'name' => 'Second Org',
+        'slug' => 'same-slug',
+    ], $headers)->assertStatus(422);
+});

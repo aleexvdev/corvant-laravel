@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Corvant\Adapters\Persistence\CorvantRoleModel;
 use Corvant\Adapters\Persistence\CorvantTenantModel;
 use Corvant\Adapters\Persistence\CorvantUserModel;
+use Corvant\Tests\Feature\Rbac\RbacTestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
@@ -40,7 +41,10 @@ function rbacTenant(CorvantUserModel $user, string $slug = 'rbac-tenant'): Corva
  */
 function rbacAuthHeaders(CorvantUserModel $user, CorvantTenantModel $tenant): array
 {
-    $login = test()->postJson('/auth/login', [
+    /** @var RbacTestCase $test */
+    $test = test();
+
+    $login = $test->postJson('/auth/login', [
         'email' => $user->email,
         'password' => 'password123',
     ]);
@@ -52,6 +56,7 @@ function rbacAuthHeaders(CorvantUserModel $user, CorvantTenantModel $tenant): ar
 }
 
 it('performs role CRUD for the current tenant', function (): void {
+    /** @var RbacTestCase $this */
     $user = rbacUser();
     $tenant = rbacTenant($user);
     $headers = rbacAuthHeaders($user, $tenant);
@@ -80,6 +85,7 @@ it('performs role CRUD for the current tenant', function (): void {
 });
 
 it('assigns and revokes roles for a user', function (): void {
+    /** @var RbacTestCase $this */
     $actor = rbacUser('actor@example.com');
     $member = rbacUser('member@example.com');
     $tenant = rbacTenant($actor, 'assign-tenant');
@@ -102,6 +108,7 @@ it('assigns and revokes roles for a user', function (): void {
 });
 
 it('authorizes protected routes when permission middleware passes', function (): void {
+    /** @var RbacTestCase $this */
     $user = rbacUser('allowed@example.com');
     $tenant = rbacTenant($user, 'allowed-tenant');
     $headers = rbacAuthHeaders($user, $tenant);
@@ -121,6 +128,7 @@ it('authorizes protected routes when permission middleware passes', function ():
 });
 
 it('returns 403 when permission middleware fails', function (): void {
+    /** @var RbacTestCase $this */
     $user = rbacUser('denied@example.com');
     $tenant = rbacTenant($user, 'denied-tenant');
     $headers = rbacAuthHeaders($user, $tenant);
@@ -138,6 +146,7 @@ it('returns 403 when permission middleware fails', function (): void {
 });
 
 it('returns 401 for protected routes without authentication', function (): void {
+    /** @var RbacTestCase $this */
     $user = rbacUser('anon@example.com');
     $tenant = rbacTenant($user, 'anon-tenant');
 
