@@ -30,6 +30,7 @@ function makeAuthenticationService(
         $notifications ?? Mockery::mock(NotificationPort::class),
         3600,
         86400,
+        86400,
     );
 }
 

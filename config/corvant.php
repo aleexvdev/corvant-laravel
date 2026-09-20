@@ -19,6 +19,10 @@ return [
         'ttl_seconds' => (int) env('CORVANT_EMAIL_VERIFICATION_TTL_SECONDS', 86400),
     ],
 
+    'email_change' => [
+        'ttl_seconds' => (int) env('CORVANT_EMAIL_CHANGE_TTL_SECONDS', 86400),
+    ],
+
     'tenancy' => [
         'header' => env('CORVANT_TENANT_HEADER', 'X-Tenant-ID'),
     ],

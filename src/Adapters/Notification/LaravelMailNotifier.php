@@ -31,4 +31,15 @@ final class LaravelMailNotifier implements NotificationPort
             },
         );
     }
+
+    public function sendEmailChangeConfirmationLink(Email $to, string $token): void
+    {
+        Mail::raw(
+            "Use this token to confirm your new email address: {$token}",
+            static function ($message) use ($to): void {
+                $message->to($to->value())
+                    ->subject('Confirm your new email');
+            },
+        );
+    }
 }

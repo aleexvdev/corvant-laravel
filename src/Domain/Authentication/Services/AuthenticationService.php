@@ -24,6 +24,8 @@ final class AuthenticationService
 
     private const PURPOSE_EMAIL_VERIFICATION = 'email-verification';
 
+    private const PURPOSE_EMAIL_CHANGE = 'email-change';
+
     public function __construct(
         private UserRepositoryPort $users,
         private SessionStorePort $sessions,
@@ -32,6 +34,7 @@ final class AuthenticationService
         private NotificationPort $notifications,
         private int $passwordResetTtlSeconds,
         private int $emailVerificationTtlSeconds,
+        private int $emailChangeTtlSeconds,
     ) {}
 
     public function register(Email $email, string $plainPassword, string $name): User
@@ -140,5 +143,86 @@ final class AuthenticationService
         }
 
         $this->users->save($user->verifyEmail());
+    }
+
+    public function updateProfile(
+        User $user,
+        string $name,
+        ?string $avatarUrl,
+        ?string $locale,
+        ?string $timezone,
+    ): User {
+        return $this->users->save($user->withProfile($name, $avatarUrl, $locale, $timezone));
+    }
+
+    public function requestEmailChange(User $user, Email $newEmail): void
+    {
+        if ($user->email()->equals($newEmail)) {
+            return;
+        }
+
+        if ($this->users->existsByEmail($newEmail)) {
+            throw new EmailAlreadyExistsException($newEmail);
+        }
+
+        $userId = $user->id();
+        if ($userId === null) {
+            throw new \LogicException('User must have an id to request an email change.');
+        }
+
+        $this->users->save($user->withPendingEmail($newEmail));
+
+        $token = $this->singleUseTokens->issue(
+            (string) $userId,
+            self::PURPOSE_EMAIL_CHANGE,
+            $this->emailChangeTtlSeconds,
+        );
+
+        $this->notifications->sendEmailChangeConfirmationLink($newEmail, $token);
+    }
+
+    public function confirmEmailChange(User $user, string $token): User
+    {
+        $userIdValue = $this->singleUseTokens->consume($token, self::PURPOSE_EMAIL_CHANGE);
+        if ($userIdValue === null) {
+            throw new InvalidOrExpiredTokenException();
+        }
+
+        $userId = $user->id();
+        if ($userId === null || (int) $userIdValue !== $userId) {
+            throw new InvalidOrExpiredTokenException();
+        }
+
+        if ($user->pendingEmail() === null) {
+            throw new InvalidOrExpiredTokenException();
+        }
+
+        return $this->users->save($user->withConfirmedEmailChange());
+    }
+
+    public function updatePhone(User $user, ?string $phone): User
+    {
+        return $this->users->save($user->withPhone($phone));
+    }
+
+    public function changePassword(User $user, string $currentPlainPassword, string $newPlainPassword): void
+    {
+        if (! $this->hasher->verify($currentPlainPassword, $user->password()->hash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        $hashed = new HashedPassword($this->hasher->hash($newPlainPassword));
+        $this->users->save($user->withPassword($hashed));
+    }
+
+    public function deleteAccount(User $user, string $currentSessionToken): void
+    {
+        $userId = $user->id();
+        if ($userId === null) {
+            throw new \LogicException('User must have an id to delete an account.');
+        }
+
+        $this->sessions->revoke($currentSessionToken);
+        $this->users->delete($userId);
     }
 }

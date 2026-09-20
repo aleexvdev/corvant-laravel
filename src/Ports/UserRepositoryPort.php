@@ -16,4 +16,6 @@ interface UserRepositoryPort
     public function save(User $user): User;
 
     public function existsByEmail(Email $email): bool;
+
+    public function delete(int $id): void;
 }
