@@ -29,6 +29,7 @@ Route::middleware([AuthenticateSessionMiddleware::class])->prefix('users/me')->g
     Route::put('phone', [UserController::class, 'updatePhone']);
     Route::put('password', [UserController::class, 'updatePassword']);
     Route::delete('/', [UserController::class, 'destroy']);
+    Route::get('audit', [UserController::class, 'audit']);
 });
 
 Route::prefix('mfa')->group(function (): void {

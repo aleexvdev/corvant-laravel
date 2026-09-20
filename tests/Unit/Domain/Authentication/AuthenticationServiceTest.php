@@ -10,6 +10,8 @@ use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
+use Corvant\Domain\Audit\AuditEvents;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
@@ -24,6 +26,7 @@ function makeAuthenticationService(
     ?SingleUseTokenPort $singleUseTokens = null,
     ?NotificationPort $notifications = null,
     ?MfaChallengePort $mfaChallenges = null,
+    ?AuditLoggerPort $auditLogger = null,
 ): AuthenticationService {
     return new AuthenticationService(
         $users,
@@ -32,6 +35,7 @@ function makeAuthenticationService(
         $hasher,
         $singleUseTokens ?? Mockery::mock(SingleUseTokenPort::class),
         $notifications ?? Mockery::mock(NotificationPort::class),
+        $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
         3600,
         86400,
         86400,
@@ -95,7 +99,10 @@ it('logs in and returns a session for valid credentials', function (): void {
     $sessions = Mockery::mock(SessionStorePort::class);
     $sessions->shouldReceive('create')->once()->with($stored)->andReturn($session);
 
-    $service = makeAuthenticationService($users, $sessions, $hasher);
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::LOGIN, 10, null);
+
+    $service = makeAuthenticationService($users, $sessions, $hasher, auditLogger: $audit);
     $result = $service->login($email, 'correct');
 
     expect($result->token())->toBe('token-abc');
@@ -185,13 +192,20 @@ it('rejects login when user is not found', function (): void {
 })->throws(InvalidCredentialsException::class);
 
 it('revokes the session on logout', function (): void {
+    $active = new Session('session-token', 7, new DateTimeImmutable('+1 hour'));
+
     $sessions = Mockery::mock(SessionStorePort::class);
+    $sessions->shouldReceive('find')->once()->with('session-token')->andReturn($active);
     $sessions->shouldReceive('revoke')->once()->with('session-token');
+
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::LOGOUT, 7, null);
 
     $service = makeAuthenticationService(
         Mockery::mock(UserRepositoryPort::class),
         $sessions,
         Mockery::mock(PasswordHasherPort::class),
+        auditLogger: $audit,
     );
 
     $service->logout('session-token');

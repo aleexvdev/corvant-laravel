@@ -8,6 +8,8 @@ use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
+use Corvant\Domain\Audit\AuditEvents;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
@@ -20,6 +22,7 @@ function makeAuthenticationServicePart2(
     PasswordHasherPort $hasher,
     SingleUseTokenPort $singleUseTokens,
     NotificationPort $notifications,
+    ?AuditLoggerPort $auditLogger = null,
 ): AuthenticationService {
     return new AuthenticationService(
         $users,
@@ -28,6 +31,7 @@ function makeAuthenticationServicePart2(
         $hasher,
         $singleUseTokens,
         $notifications,
+        $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
         3600,
         86400,
         86400,
@@ -119,4 +123,32 @@ it('marks the user verified when consuming a valid verification token', function
     );
 
     $service->verifyEmail('verify-token');
+});
+
+it('logs password changed when resetting password with a valid token', function (): void {
+    $user = new User(3, new Email('reset@example.com'), new HashedPassword('old-hash'), 'User');
+
+    $tokens = Mockery::mock(SingleUseTokenPort::class);
+    $tokens->shouldReceive('consume')->once()->with('reset-token', 'password-reset')->andReturn('reset@example.com');
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('findByEmail')->once()->andReturn($user);
+    $users->shouldReceive('save')->once()->andReturnUsing(fn (User $saved): User => $saved);
+
+    $hasher = Mockery::mock(PasswordHasherPort::class);
+    $hasher->shouldReceive('hash')->once()->with('new-password')->andReturn('new-hash');
+
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::PASSWORD_CHANGED, 3, null);
+
+    $service = makeAuthenticationServicePart2(
+        $users,
+        Mockery::mock(SessionStorePort::class),
+        $hasher,
+        $tokens,
+        Mockery::mock(NotificationPort::class),
+        $audit,
+    );
+
+    $service->resetPassword('reset-token', 'new-password');
 });
