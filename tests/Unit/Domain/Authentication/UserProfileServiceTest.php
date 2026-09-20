@@ -9,6 +9,8 @@ use Corvant\Domain\Authentication\Exceptions\InvalidOrExpiredTokenException;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
+use Corvant\Domain\Audit\AuditEvents;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
@@ -21,6 +23,7 @@ function makeProfileAuthenticationService(
     PasswordHasherPort $hasher,
     SingleUseTokenPort $tokens,
     NotificationPort $notifications,
+    ?AuditLoggerPort $auditLogger = null,
 ): AuthenticationService {
     return new AuthenticationService(
         $users,
@@ -29,6 +32,7 @@ function makeProfileAuthenticationService(
         $hasher,
         $tokens,
         $notifications,
+        $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
         3600,
         86400,
         86400,
@@ -93,6 +97,31 @@ it('throws when confirming email change with an invalid token', function (): voi
 
     $service->confirmEmailChange($user, 'bad-token');
 })->throws(InvalidOrExpiredTokenException::class);
+
+it('logs password changed when changePassword succeeds', function (): void {
+    $user = new User(2, new Email('user@example.com'), new HashedPassword('hash'), 'User');
+
+    $hasher = Mockery::mock(PasswordHasherPort::class);
+    $hasher->shouldReceive('verify')->once()->with('current', 'hash')->andReturn(true);
+    $hasher->shouldReceive('hash')->once()->with('new-password')->andReturn('new-hash');
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('save')->once()->andReturnUsing(fn (User $saved): User => $saved);
+
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::PASSWORD_CHANGED, 2, null);
+
+    $service = makeProfileAuthenticationService(
+        $users,
+        Mockery::mock(SessionStorePort::class),
+        $hasher,
+        Mockery::mock(SingleUseTokenPort::class),
+        Mockery::mock(NotificationPort::class),
+        $audit,
+    );
+
+    $service->changePassword($user, 'current', 'new-password');
+});
 
 it('rejects password change when the current password is wrong', function (): void {
     $user = new User(1, new Email('user@example.com'), new HashedPassword('hash'), 'User');

@@ -12,6 +12,8 @@ use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
+use Corvant\Domain\Audit\AuditEvents;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
@@ -35,6 +37,7 @@ final class AuthenticationService
         private PasswordHasherPort $hasher,
         private SingleUseTokenPort $singleUseTokens,
         private NotificationPort $notifications,
+        private AuditLoggerPort $auditLogger,
         private int $passwordResetTtlSeconds,
         private int $emailVerificationTtlSeconds,
         private int $emailChangeTtlSeconds,
@@ -65,12 +68,20 @@ final class AuthenticationService
             throw new MfaChallengeRequiredException($challenge->token());
         }
 
-        return $this->sessions->create($user);
+        $session = $this->sessions->create($user);
+        $this->auditLogger->log(AuditEvents::LOGIN, $user->id(), null);
+
+        return $session;
     }
 
     public function logout(string $sessionToken): void
     {
+        $session = $this->sessions->find($sessionToken);
         $this->sessions->revoke($sessionToken);
+
+        if ($session !== null) {
+            $this->auditLogger->log(AuditEvents::LOGOUT, $session->userId(), null);
+        }
     }
 
     public function refresh(string $currentToken): Session
@@ -121,6 +132,7 @@ final class AuthenticationService
 
         $hashed = new HashedPassword($this->hasher->hash($newPlainPassword));
         $this->users->save($user->withPassword($hashed));
+        $this->auditLogger->log(AuditEvents::PASSWORD_CHANGED, $user->id(), null);
     }
 
     public function requestEmailVerification(User $user): void
@@ -221,6 +233,7 @@ final class AuthenticationService
 
         $hashed = new HashedPassword($this->hasher->hash($newPlainPassword));
         $this->users->save($user->withPassword($hashed));
+        $this->auditLogger->log(AuditEvents::PASSWORD_CHANGED, $user->id(), null);
     }
 
     public function deleteAccount(User $user, string $currentSessionToken): void

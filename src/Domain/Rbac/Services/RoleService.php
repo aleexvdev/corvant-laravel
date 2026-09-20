@@ -8,13 +8,16 @@ use Corvant\Domain\Rbac\Entities\Role;
 use Corvant\Domain\Rbac\Exceptions\RoleAlreadyExistsException;
 use Corvant\Domain\Rbac\Exceptions\RoleNotFoundException;
 use Corvant\Domain\Rbac\Exceptions\RoleTenantMismatchException;
+use Corvant\Domain\Audit\AuditEvents;
 use Corvant\Domain\Rbac\ValueObjects\PermissionName;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\RoleRepositoryPort;
 
 final class RoleService
 {
     public function __construct(
         private RoleRepositoryPort $roles,
+        private AuditLoggerPort $auditLogger,
     ) {}
 
     /**
@@ -85,6 +88,11 @@ final class RoleService
         $this->assertRoleInTenantContext($role, $tenantId);
 
         $this->roles->attachRoleToUser($userId, $roleId);
+
+        $this->auditLogger->log(AuditEvents::ROLE_ASSIGNED, $userId, $tenantId, [
+            'role_id' => $roleId,
+            'role_name' => $role->name(),
+        ]);
     }
 
     public function revokeRole(int $userId, int $roleId, ?int $tenantId): void
@@ -97,6 +105,11 @@ final class RoleService
         $this->assertRoleInTenantContext($role, $tenantId);
 
         $this->roles->detachRoleFromUser($userId, $roleId);
+
+        $this->auditLogger->log(AuditEvents::ROLE_REVOKED, $userId, $tenantId, [
+            'role_id' => $roleId,
+            'role_name' => $role->name(),
+        ]);
     }
 
     /**

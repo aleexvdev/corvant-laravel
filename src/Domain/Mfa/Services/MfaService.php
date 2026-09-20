@@ -11,7 +11,9 @@ use Corvant\Domain\Authentication\ValueObjects\MfaChallenge;
 use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Mfa\Exceptions\MfaAlreadyEnabledException;
 use Corvant\Domain\Mfa\Exceptions\MfaNotEnabledException;
+use Corvant\Domain\Audit\AuditEvents;
 use Corvant\Domain\Mfa\ValueObjects\TotpCode;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\MfaProviderPort;
 use Corvant\Ports\MfaRecoveryCodePort;
@@ -29,6 +31,7 @@ final class MfaService
         private SessionStorePort $sessions,
         private PasswordHasherPort $hasher,
         private MfaRecoveryCodePort $recoveryCodes,
+        private AuditLoggerPort $auditLogger,
         private int $recoveryCodesCount,
     ) {}
 
@@ -64,6 +67,7 @@ final class MfaService
         }
 
         $this->users->save($user->withConfirmedTotpSecret($pending));
+        $this->auditLogger->log(AuditEvents::MFA_ENABLED, $user->id(), null);
     }
 
     public function verifyMfaChallenge(string $challengeToken, string $code): Session
@@ -79,6 +83,7 @@ final class MfaService
 
         $session = $this->sessions->create($user);
         $this->challenges->revoke($challengeToken);
+        $this->auditLogger->log(AuditEvents::LOGIN, $user->id(), null);
 
         return $session;
     }
@@ -99,6 +104,7 @@ final class MfaService
                 $this->recoveryCodes->markUsed($stored->id());
                 $session = $this->sessions->create($user);
                 $this->challenges->revoke($challengeToken);
+                $this->auditLogger->log(AuditEvents::LOGIN, $user->id(), null);
 
                 return $session;
             }
@@ -119,6 +125,7 @@ final class MfaService
         }
 
         $this->users->save($user->withMfaDisabled());
+        $this->auditLogger->log(AuditEvents::MFA_DISABLED, $user->id(), null);
     }
 
     /**

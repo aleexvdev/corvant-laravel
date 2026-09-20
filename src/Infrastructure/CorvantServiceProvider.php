@@ -10,6 +10,7 @@ use Corvant\Adapters\Persistence\EloquentTenantRepository;
 use Corvant\Adapters\Persistence\EloquentUserRepository;
 use Corvant\Adapters\Mfa\TotpProvider;
 use Corvant\Adapters\Notification\LaravelMailNotifier;
+use Corvant\Adapters\Persistence\EloquentAuditLogger;
 use Corvant\Adapters\Persistence\EloquentMfaRecoveryCodeRepository;
 use Corvant\Adapters\Security\LaravelHasher;
 use Corvant\Adapters\Session\RedisMfaChallengeStore;
@@ -27,6 +28,7 @@ use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\PermissionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Corvant\Infrastructure\Tenancy\CurrentTenant;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\MfaProviderPort;
 use Corvant\Ports\MfaRecoveryCodePort;
@@ -77,6 +79,7 @@ class CorvantServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(MfaRecoveryCodePort::class, EloquentMfaRecoveryCodeRepository::class);
+        $this->app->bind(AuditLoggerPort::class, EloquentAuditLogger::class);
 
         $this->app->singleton(AuthenticationService::class, function ($app): AuthenticationService {
             return new AuthenticationService(
@@ -86,6 +89,7 @@ class CorvantServiceProvider extends ServiceProvider
                 $app->make(PasswordHasherPort::class),
                 $app->make(SingleUseTokenPort::class),
                 $app->make(NotificationPort::class),
+                $app->make(AuditLoggerPort::class),
                 (int) $app['config']->get('corvant.password_reset.ttl_seconds', 3600),
                 (int) $app['config']->get('corvant.email_verification.ttl_seconds', 86400),
                 (int) $app['config']->get('corvant.email_change.ttl_seconds', 86400),
@@ -120,6 +124,7 @@ class CorvantServiceProvider extends ServiceProvider
                 $app->make(SessionStorePort::class),
                 $app->make(PasswordHasherPort::class),
                 $app->make(MfaRecoveryCodePort::class),
+                $app->make(AuditLoggerPort::class),
                 (int) $app['config']->get('corvant.mfa.recovery_codes_count', 10),
             );
         });

@@ -10,6 +10,8 @@ use Corvant\Domain\Authentication\ValueObjects\MfaChallenge;
 use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Mfa\Exceptions\MfaAlreadyEnabledException;
 use Corvant\Domain\Mfa\Services\MfaService;
+use Corvant\Domain\Audit\AuditEvents;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\MfaProviderPort;
 use Corvant\Ports\MfaRecoveryCodePort;
@@ -25,6 +27,7 @@ function makeMfaService(
     PasswordHasherPort $hasher,
     MfaRecoveryCodePort $recoveryCodes,
     int $recoveryCodesCount = 10,
+    ?AuditLoggerPort $auditLogger = null,
 ): MfaService {
     return new MfaService(
         $users,
@@ -33,6 +36,7 @@ function makeMfaService(
         $sessions,
         $hasher,
         $recoveryCodes,
+        $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
         $recoveryCodesCount,
     );
 }
@@ -104,6 +108,9 @@ it('confirms MFA when the pending secret matches the TOTP code', function (): vo
     $mfaProvider = Mockery::mock(MfaProviderPort::class);
     $mfaProvider->shouldReceive('verifyCode')->once()->with('pending-secret', '123456')->andReturn(true);
 
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::MFA_ENABLED, 1, null);
+
     $service = makeMfaService(
         $users,
         $mfaProvider,
@@ -111,6 +118,7 @@ it('confirms MFA when the pending secret matches the TOTP code', function (): vo
         Mockery::mock(SessionStorePort::class),
         Mockery::mock(PasswordHasherPort::class),
         Mockery::mock(MfaRecoveryCodePort::class),
+        auditLogger: $audit,
     );
 
     $service->confirmTotp($user, '123456');
@@ -200,6 +208,9 @@ it('marks a recovery code as used after a successful login challenge completion'
     $sessions = Mockery::mock(SessionStorePort::class);
     $sessions->shouldReceive('create')->once()->with($user)->andReturn($session);
 
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once()->with(AuditEvents::LOGIN, 1, null);
+
     $service = makeMfaService(
         $users,
         Mockery::mock(MfaProviderPort::class),
@@ -207,6 +218,7 @@ it('marks a recovery code as used after a successful login challenge completion'
         $sessions,
         $hasher,
         $recoveryCodes,
+        auditLogger: $audit,
     );
 
     $result = $service->useMfaRecoveryCode('challenge-1', 'RC-1');

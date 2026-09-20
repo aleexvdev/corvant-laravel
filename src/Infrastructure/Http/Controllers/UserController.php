@@ -9,7 +9,9 @@ use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidEmailException;
 use Corvant\Domain\Authentication\Exceptions\InvalidOrExpiredTokenException;
+use Corvant\Domain\Audit\Entities\AuditLogEntry;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
+use Corvant\Ports\AuditLoggerPort;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Infrastructure\Authentication\CurrentUser;
 use Corvant\Infrastructure\Http\Requests\ConfirmEmailChangeRequest;
@@ -27,6 +29,7 @@ final class UserController extends Controller
 {
     public function __construct(
         private AuthenticationService $authentication,
+        private AuditLoggerPort $auditLogger,
     ) {}
 
     public function me(CurrentUser $currentUser): JsonResponse
@@ -118,6 +121,20 @@ final class UserController extends Controller
         return response()->json(['message' => 'Password updated.']);
     }
 
+    public function audit(CurrentUser $currentUser): JsonResponse
+    {
+        $user = $this->requireUser($currentUser);
+
+        $entries = $this->auditLogger->forUser($user->id());
+
+        return response()->json([
+            'data' => array_map(
+                fn (AuditLogEntry $entry) => $this->auditPayload($entry),
+                $entries,
+            ),
+        ]);
+    }
+
     public function destroy(Request $request, CurrentUser $currentUser): JsonResponse
     {
         $user = $this->requireUser($currentUser);
@@ -130,6 +147,20 @@ final class UserController extends Controller
         $this->authentication->deleteAccount($user, $token);
 
         return response()->json(['message' => 'Account deleted.']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function auditPayload(AuditLogEntry $entry): array
+    {
+        return [
+            'id' => $entry->id(),
+            'event' => $entry->event(),
+            'tenant_id' => $entry->tenantId(),
+            'metadata' => $entry->metadata(),
+            'occurred_at' => $entry->occurredAt()->format(DATE_ATOM),
+        ];
     }
 
     /**
