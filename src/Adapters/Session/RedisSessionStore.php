@@ -49,23 +49,12 @@ final class RedisSessionStore implements SessionStorePort
 
     public function find(string $token): ?Session
     {
-        $raw = $this->connection()->get(self::KEY_PREFIX.$token);
-        if ($raw === null || $raw === false) {
-            return null;
-        }
-
-        $data = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
-
-        return new Session(
-            $token,
-            (int) $data['user_id'],
-            new DateTimeImmutable($data['expires_at']),
-        );
+        return $this->read($token, extendIdleTimeout: true);
     }
 
     public function revoke(string $token): void
     {
-        $session = $this->find($token);
+        $session = $this->read($token, extendIdleTimeout: false);
         if ($session === null) {
             return;
         }
@@ -84,7 +73,7 @@ final class RedisSessionStore implements SessionStorePort
         $sessions = [];
 
         foreach ($tokens as $token) {
-            $session = $this->find((string) $token);
+            $session = $this->read((string) $token, extendIdleTimeout: false);
             if ($session === null) {
                 $this->connection()->srem($this->userSessionsKey($userId), (string) $token);
 
@@ -95,6 +84,36 @@ final class RedisSessionStore implements SessionStorePort
         }
 
         return $sessions;
+    }
+
+    private function read(string $token, bool $extendIdleTimeout): ?Session
+    {
+        $key = self::KEY_PREFIX.$token;
+        $raw = $this->connection()->get($key);
+        if ($raw === null || $raw === false) {
+            return null;
+        }
+
+        $data = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+        $userId = (int) $data['user_id'];
+
+        if ($extendIdleTimeout) {
+            $expiresAt = new DateTimeImmutable(sprintf('+%d seconds', $this->ttlSeconds));
+            $payload = json_encode([
+                'user_id' => $userId,
+                'expires_at' => $expiresAt->format(DateTimeImmutable::ATOM),
+            ], JSON_THROW_ON_ERROR);
+
+            $this->connection()->setex($key, $this->ttlSeconds, $payload);
+
+            return new Session($token, $userId, $expiresAt);
+        }
+
+        return new Session(
+            $token,
+            $userId,
+            new DateTimeImmutable($data['expires_at']),
+        );
     }
 
     private function userSessionsKey(int $userId): string

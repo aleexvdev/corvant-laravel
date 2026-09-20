@@ -10,6 +10,7 @@ use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Audit\AuditEvents;
 use Corvant\Ports\AuditLoggerPort;
+use Corvant\Ports\LoginAttemptPort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
@@ -32,6 +33,7 @@ function makeAuthenticationServicePart2(
         $singleUseTokens,
         $notifications,
         $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
+        Mockery::mock(LoginAttemptPort::class),
         3600,
         86400,
         86400,

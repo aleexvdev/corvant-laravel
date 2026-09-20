@@ -61,7 +61,13 @@ abstract class TestCase extends OrchestraTestCase
         ]);
 
         $app['config']->set('corvant.password.min_length', 8);
+        $app['config']->set('corvant.password.require_mixed_case', false);
+        $app['config']->set('corvant.password.require_numbers', false);
+        $app['config']->set('corvant.password.require_symbols', false);
         $app['config']->set('corvant.session.ttl_seconds', 3600);
+        $app['config']->set('corvant.rate_limiting.login_attempts_per_minute', 60);
+        $app['config']->set('corvant.account_lockout.max_failed_attempts', 20);
+        $app['config']->set('corvant.account_lockout.lockout_duration_seconds', 900);
         $app['config']->set('corvant.tenancy.header', 'X-Tenant-ID');
     }
 }
