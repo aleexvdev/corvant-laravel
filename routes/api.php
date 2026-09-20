@@ -52,7 +52,8 @@ Route::middleware([AuthenticateSessionMiddleware::class])->prefix('sessions')->g
 
 Route::prefix('auth')->group(function (): void {
     Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('login', [AuthController::class, 'login'])
+        ->middleware('throttle:corvant-login');
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);

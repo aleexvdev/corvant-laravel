@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Corvant\Infrastructure\Http\Controllers;
 
+use Corvant\Domain\Authentication\Exceptions\AccountLockedException;
 use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidEmailException;
@@ -59,6 +60,8 @@ final class AuthController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (InvalidCredentialsException) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
+        } catch (AccountLockedException $e) {
+            return response()->json(['message' => $e->getMessage()], 423);
         } catch (MfaChallengeRequiredException $e) {
             return response()->json([
                 'mfa_required' => true,

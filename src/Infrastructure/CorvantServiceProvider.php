@@ -13,6 +13,7 @@ use Corvant\Adapters\Notification\LaravelMailNotifier;
 use Corvant\Adapters\Persistence\EloquentAuditLogger;
 use Corvant\Adapters\Persistence\EloquentMfaRecoveryCodeRepository;
 use Corvant\Adapters\Security\LaravelHasher;
+use Corvant\Adapters\Session\RedisLoginAttemptStore;
 use Corvant\Adapters\Session\RedisMfaChallengeStore;
 use Corvant\Adapters\Session\RedisSessionStore;
 use Corvant\Adapters\Session\RedisSingleUseTokenStore;
@@ -29,6 +30,7 @@ use Corvant\Infrastructure\Http\Middleware\PermissionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Corvant\Infrastructure\Tenancy\CurrentTenant;
 use Corvant\Ports\AuditLoggerPort;
+use Corvant\Ports\LoginAttemptPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\MfaProviderPort;
 use Corvant\Ports\MfaRecoveryCodePort;
@@ -40,8 +42,11 @@ use Corvant\Ports\SingleUseTokenPort;
 use Corvant\Ports\TenantRepositoryPort;
 use Corvant\Ports\TenantResolverPort;
 use Corvant\Ports\UserRepositoryPort;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -81,6 +86,14 @@ class CorvantServiceProvider extends ServiceProvider
         $this->app->bind(MfaRecoveryCodePort::class, EloquentMfaRecoveryCodeRepository::class);
         $this->app->bind(AuditLoggerPort::class, EloquentAuditLogger::class);
 
+        $this->app->bind(LoginAttemptPort::class, function ($app): RedisLoginAttemptStore {
+            return new RedisLoginAttemptStore(
+                $app->make(RedisFactory::class),
+                (int) $app['config']->get('corvant.account_lockout.max_failed_attempts', 5),
+                (int) $app['config']->get('corvant.account_lockout.lockout_duration_seconds', 900),
+            );
+        });
+
         $this->app->singleton(AuthenticationService::class, function ($app): AuthenticationService {
             return new AuthenticationService(
                 $app->make(UserRepositoryPort::class),
@@ -90,6 +103,7 @@ class CorvantServiceProvider extends ServiceProvider
                 $app->make(SingleUseTokenPort::class),
                 $app->make(NotificationPort::class),
                 $app->make(AuditLoggerPort::class),
+                $app->make(LoginAttemptPort::class),
                 (int) $app['config']->get('corvant.password_reset.ttl_seconds', 3600),
                 (int) $app['config']->get('corvant.email_verification.ttl_seconds', 86400),
                 (int) $app['config']->get('corvant.email_change.ttl_seconds', 86400),
@@ -132,6 +146,13 @@ class CorvantServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        RateLimiter::for('corvant-login', function (Request $request): Limit {
+            $email = strtolower(trim((string) $request->input('email', '')));
+            $perMinute = (int) config('corvant.rate_limiting.login_attempts_per_minute', 5);
+
+            return Limit::perMinute($perMinute)->by($email.$request->ip());
+        });
+
         $this->loadRoutesFrom(__DIR__.'/../../routes/api.php');
 
         $router = $this->app->make(Router::class);

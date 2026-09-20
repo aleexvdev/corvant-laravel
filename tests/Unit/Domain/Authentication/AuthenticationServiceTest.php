@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Corvant\Domain\Authentication\Entities\User;
+use Corvant\Domain\Authentication\Exceptions\AccountLockedException;
 use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
@@ -12,6 +13,7 @@ use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Authentication\Exceptions\MfaChallengeRequiredException;
 use Corvant\Domain\Audit\AuditEvents;
 use Corvant\Ports\AuditLoggerPort;
+use Corvant\Ports\LoginAttemptPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
@@ -27,6 +29,7 @@ function makeAuthenticationService(
     ?NotificationPort $notifications = null,
     ?MfaChallengePort $mfaChallenges = null,
     ?AuditLoggerPort $auditLogger = null,
+    ?LoginAttemptPort $loginAttempts = null,
 ): AuthenticationService {
     return new AuthenticationService(
         $users,
@@ -36,6 +39,7 @@ function makeAuthenticationService(
         $singleUseTokens ?? Mockery::mock(SingleUseTokenPort::class),
         $notifications ?? Mockery::mock(NotificationPort::class),
         $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
+        $loginAttempts ?? Mockery::mock(LoginAttemptPort::class)->shouldIgnoreMissing(),
         3600,
         86400,
         86400,
@@ -79,6 +83,81 @@ it('throws when registering a duplicate email', function (): void {
 
     $service->register($email, 'secret', 'Name');
 })->throws(EmailAlreadyExistsException::class);
+
+it('blocks login before user lookup when the email is locked', function (): void {
+    $email = new Email('locked@example.com');
+
+    $attempts = Mockery::mock(LoginAttemptPort::class);
+    $attempts->shouldReceive('isLocked')->once()->with('locked@example.com')->andReturn(true);
+    $attempts->shouldReceive('recordFailure')->never();
+    $attempts->shouldReceive('clear')->never();
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('findByEmail')->never();
+
+    $service = makeAuthenticationService(
+        $users,
+        Mockery::mock(SessionStorePort::class),
+        Mockery::mock(PasswordHasherPort::class),
+        loginAttempts: $attempts,
+    );
+
+    $service->login($email, 'secret');
+})->throws(AccountLockedException::class);
+
+it('records a failed attempt when credentials are invalid', function (): void {
+    $email = new Email('user@example.com');
+
+    $attempts = Mockery::mock(LoginAttemptPort::class);
+    $attempts->shouldReceive('isLocked')->once()->andReturn(false);
+    $attempts->shouldReceive('recordFailure')->once()->with('user@example.com');
+    $attempts->shouldReceive('clear')->never();
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('findByEmail')->once()->andReturn(null);
+
+    $service = makeAuthenticationService(
+        $users,
+        Mockery::mock(SessionStorePort::class),
+        Mockery::mock(PasswordHasherPort::class),
+        loginAttempts: $attempts,
+    );
+
+    $service->login($email, 'wrong');
+})->throws(InvalidCredentialsException::class);
+
+it('clears failed attempts after a successful login', function (): void {
+    $email = new Email('user@example.com');
+    $stored = new User(10, $email, new HashedPassword('stored-hash'), 'User');
+    $session = new Session('token-abc', 10, new DateTimeImmutable('+1 hour'));
+
+    $attempts = Mockery::mock(LoginAttemptPort::class);
+    $attempts->shouldReceive('isLocked')->once()->andReturn(false);
+    $attempts->shouldReceive('clear')->once()->with('user@example.com');
+    $attempts->shouldReceive('recordFailure')->never();
+
+    $users = Mockery::mock(UserRepositoryPort::class);
+    $users->shouldReceive('findByEmail')->once()->andReturn($stored);
+
+    $hasher = Mockery::mock(PasswordHasherPort::class);
+    $hasher->shouldReceive('verify')->once()->andReturn(true);
+
+    $sessions = Mockery::mock(SessionStorePort::class);
+    $sessions->shouldReceive('create')->once()->andReturn($session);
+
+    $audit = Mockery::mock(AuditLoggerPort::class);
+    $audit->shouldReceive('log')->once();
+
+    $service = makeAuthenticationService(
+        $users,
+        $sessions,
+        $hasher,
+        auditLogger: $audit,
+        loginAttempts: $attempts,
+    );
+
+    $service->login($email, 'correct');
+});
 
 it('logs in and returns a session for valid credentials', function (): void {
     $email = new Email('user@example.com');

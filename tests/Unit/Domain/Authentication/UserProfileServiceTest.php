@@ -33,6 +33,7 @@ function makeProfileAuthenticationService(
         $tokens,
         $notifications,
         $auditLogger ?? Mockery::mock(AuditLoggerPort::class),
+        Mockery::mock(\Corvant\Ports\LoginAttemptPort::class),
         3600,
         86400,
         86400,

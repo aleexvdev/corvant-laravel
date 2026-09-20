@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Corvant\Domain\Authentication\Services;
 
 use Corvant\Domain\Authentication\Entities\User;
+use Corvant\Domain\Authentication\Exceptions\AccountLockedException;
 use Corvant\Domain\Authentication\Exceptions\EmailAlreadyExistsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidCredentialsException;
 use Corvant\Domain\Authentication\Exceptions\InvalidOrExpiredTokenException;
@@ -14,6 +15,7 @@ use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
 use Corvant\Domain\Audit\AuditEvents;
 use Corvant\Ports\AuditLoggerPort;
+use Corvant\Ports\LoginAttemptPort;
 use Corvant\Ports\MfaChallengePort;
 use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
@@ -38,6 +40,7 @@ final class AuthenticationService
         private SingleUseTokenPort $singleUseTokens,
         private NotificationPort $notifications,
         private AuditLoggerPort $auditLogger,
+        private LoginAttemptPort $loginAttempts,
         private int $passwordResetTtlSeconds,
         private int $emailVerificationTtlSeconds,
         private int $emailChangeTtlSeconds,
@@ -57,11 +60,18 @@ final class AuthenticationService
 
     public function login(Email $email, string $plainPassword): Session
     {
+        if ($this->loginAttempts->isLocked($email->value())) {
+            throw new AccountLockedException();
+        }
+
         $user = $this->users->findByEmail($email);
 
         if ($user === null || ! $this->hasher->verify($plainPassword, $user->password()->hash())) {
+            $this->loginAttempts->recordFailure($email->value());
             throw new InvalidCredentialsException();
         }
+
+        $this->loginAttempts->clear($email->value());
 
         if ($user->hasMfaEnabled()) {
             $challenge = $this->mfaChallenges->create($user);
