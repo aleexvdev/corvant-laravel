@@ -1,5 +1,5 @@
 {
-    "name": "alexvdev/corvant",
+    "name": "aleexvdev/corvant",
     "description": "Identity & Access Management library for Laravel — authentication, MFA, RBAC, multi-tenancy, sessions and audit log, embedded as a package.",
     "type": "library",
     "license": "MIT",
