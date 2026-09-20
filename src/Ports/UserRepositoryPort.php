@@ -11,6 +11,8 @@ interface UserRepositoryPort
 {
     public function findByEmail(Email $email): ?User;
 
+    public function findById(int $id): ?User;
+
     public function save(User $user): User;
 
     public function existsByEmail(Email $email): bool;
