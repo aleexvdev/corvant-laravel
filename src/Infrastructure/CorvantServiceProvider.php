@@ -8,8 +8,10 @@ use Corvant\Adapters\Http\HeaderTenantResolver;
 use Corvant\Adapters\Persistence\EloquentRoleRepository;
 use Corvant\Adapters\Persistence\EloquentTenantRepository;
 use Corvant\Adapters\Persistence\EloquentUserRepository;
+use Corvant\Adapters\Notification\LaravelMailNotifier;
 use Corvant\Adapters\Security\LaravelHasher;
 use Corvant\Adapters\Session\RedisSessionStore;
+use Corvant\Adapters\Session\RedisSingleUseTokenStore;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Rbac\Services\PermissionResolver;
 use Corvant\Domain\Rbac\Services\RoleService;
@@ -20,9 +22,11 @@ use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\PermissionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Corvant\Infrastructure\Tenancy\CurrentTenant;
+use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\RoleRepositoryPort;
 use Corvant\Ports\SessionStorePort;
+use Corvant\Ports\SingleUseTokenPort;
 use Corvant\Ports\TenantRepositoryPort;
 use Corvant\Ports\TenantResolverPort;
 use Corvant\Ports\UserRepositoryPort;
@@ -46,7 +50,20 @@ class CorvantServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(AuthenticationService::class);
+        $this->app->bind(SingleUseTokenPort::class, RedisSingleUseTokenStore::class);
+        $this->app->bind(NotificationPort::class, LaravelMailNotifier::class);
+
+        $this->app->singleton(AuthenticationService::class, function ($app): AuthenticationService {
+            return new AuthenticationService(
+                $app->make(UserRepositoryPort::class),
+                $app->make(SessionStorePort::class),
+                $app->make(PasswordHasherPort::class),
+                $app->make(SingleUseTokenPort::class),
+                $app->make(NotificationPort::class),
+                (int) $app['config']->get('corvant.password_reset.ttl_seconds', 3600),
+                (int) $app['config']->get('corvant.email_verification.ttl_seconds', 86400),
+            );
+        });
 
         $this->app->bind(TenantRepositoryPort::class, EloquentTenantRepository::class);
 

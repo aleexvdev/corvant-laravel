@@ -6,6 +6,7 @@ namespace Corvant\Domain\Authentication\Entities;
 
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
+use DateTimeImmutable;
 
 final class User
 {
@@ -14,6 +15,7 @@ final class User
         private Email $email,
         private HashedPassword $password,
         private string $name,
+        private ?DateTimeImmutable $emailVerifiedAt = null,
     ) {}
 
     public static function register(
@@ -21,12 +23,28 @@ final class User
         HashedPassword $password,
         string $name,
     ): self {
-        return new self(null, $email, $password, $name);
+        return new self(null, $email, $password, $name, null);
     }
 
     public function withId(int $id): self
     {
-        return new self($id, $this->email, $this->password, $this->name);
+        return new self($id, $this->email, $this->password, $this->name, $this->emailVerifiedAt);
+    }
+
+    public function withPassword(HashedPassword $password): self
+    {
+        return new self($this->id, $this->email, $password, $this->name, $this->emailVerifiedAt);
+    }
+
+    public function verifyEmail(): self
+    {
+        return new self(
+            $this->id,
+            $this->email,
+            $this->password,
+            $this->name,
+            new DateTimeImmutable(),
+        );
     }
 
     public function id(): ?int
@@ -47,5 +65,15 @@ final class User
     public function name(): string
     {
         return $this->name;
+    }
+
+    public function emailVerifiedAt(): ?DateTimeImmutable
+    {
+        return $this->emailVerifiedAt;
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->emailVerifiedAt !== null;
     }
 }

@@ -19,6 +19,11 @@ final class CorvantUserModel extends Model
         'email',
         'password',
         'name',
+        'email_verified_at',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
     ];
 
     protected $hidden = [

@@ -9,16 +9,28 @@ use Corvant\Domain\Authentication\Services\AuthenticationService;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Domain\Authentication\ValueObjects\Session;
+use Corvant\Ports\NotificationPort;
 use Corvant\Ports\PasswordHasherPort;
 use Corvant\Ports\SessionStorePort;
+use Corvant\Ports\SingleUseTokenPort;
 use Corvant\Ports\UserRepositoryPort;
 
 function makeAuthenticationService(
     UserRepositoryPort $users,
     SessionStorePort $sessions,
     PasswordHasherPort $hasher,
+    ?SingleUseTokenPort $singleUseTokens = null,
+    ?NotificationPort $notifications = null,
 ): AuthenticationService {
-    return new AuthenticationService($users, $sessions, $hasher);
+    return new AuthenticationService(
+        $users,
+        $sessions,
+        $hasher,
+        $singleUseTokens ?? Mockery::mock(SingleUseTokenPort::class),
+        $notifications ?? Mockery::mock(NotificationPort::class),
+        3600,
+        86400,
+    );
 }
 
 it('registers a new user when email is available', function (): void {

@@ -8,6 +8,7 @@ use Corvant\Domain\Authentication\Entities\User;
 use Corvant\Domain\Authentication\ValueObjects\Email;
 use Corvant\Domain\Authentication\ValueObjects\HashedPassword;
 use Corvant\Ports\UserRepositoryPort;
+use DateTimeImmutable;
 
 /**
  * Persists domain users in Corvant's corvant_users table (package-owned schema).
@@ -48,6 +49,7 @@ final class EloquentUserRepository implements UserRepositoryPort
                 'email' => $user->email()->value(),
                 'password' => $user->password()->hash(),
                 'name' => $user->name(),
+                'email_verified_at' => $user->emailVerifiedAt(),
             ]);
             $model->save();
 
@@ -58,6 +60,7 @@ final class EloquentUserRepository implements UserRepositoryPort
             'email' => $user->email()->value(),
             'password' => $user->password()->hash(),
             'name' => $user->name(),
+            'email_verified_at' => $user->emailVerifiedAt(),
         ]);
 
         return $this->toDomain($model);
@@ -72,11 +75,16 @@ final class EloquentUserRepository implements UserRepositoryPort
 
     private function toDomain(CorvantUserModel $model): User
     {
+        $verifiedAt = $model->email_verified_at !== null
+            ? new DateTimeImmutable((string) $model->email_verified_at)
+            : null;
+
         return new User(
             (int) $model->getKey(),
             new Email($model->email),
             new HashedPassword($model->password),
             $model->name,
+            $verifiedAt,
         );
     }
 }
