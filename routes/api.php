@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use Corvant\Infrastructure\Http\Controllers\AuthController;
+use Corvant\Infrastructure\Http\Controllers\PermissionController;
+use Corvant\Infrastructure\Http\Controllers\RoleController;
 use Corvant\Infrastructure\Http\Controllers\TenantController;
+use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +19,17 @@ Route::prefix('auth')->group(function (): void {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
     Route::post('logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware([
+    AuthenticateSessionMiddleware::class,
+    ResolveTenantMiddleware::class,
+])->group(function (): void {
+    Route::get('roles', [RoleController::class, 'index']);
+    Route::post('roles', [RoleController::class, 'store']);
+    Route::put('roles/{id}', [RoleController::class, 'update']);
+    Route::delete('roles/{id}', [RoleController::class, 'destroy']);
+    Route::get('permissions', [PermissionController::class, 'index']);
+    Route::post('users/{userId}/roles', [RoleController::class, 'assignRole']);
+    Route::delete('users/{userId}/roles/{roleId}', [RoleController::class, 'revokeRole']);
 });

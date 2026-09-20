@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace Corvant\Infrastructure;
 
 use Corvant\Adapters\Http\HeaderTenantResolver;
+use Corvant\Adapters\Persistence\EloquentRoleRepository;
 use Corvant\Adapters\Persistence\EloquentTenantRepository;
 use Corvant\Adapters\Persistence\EloquentUserRepository;
 use Corvant\Adapters\Security\LaravelHasher;
 use Corvant\Adapters\Session\RedisSessionStore;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
+use Corvant\Domain\Rbac\Services\PermissionResolver;
+use Corvant\Domain\Rbac\Services\RoleService;
 use Corvant\Domain\Tenancy\Services\TenancyService;
+use Corvant\Infrastructure\Authentication\CurrentUser;
+use Corvant\Infrastructure\Http\Middleware\AuthenticateSessionMiddleware;
+use Corvant\Infrastructure\Http\Middleware\PermissionMiddleware;
 use Corvant\Infrastructure\Http\Middleware\ResolveTenantMiddleware;
 use Corvant\Infrastructure\Tenancy\CurrentTenant;
 use Corvant\Ports\PasswordHasherPort;
+use Corvant\Ports\RoleRepositoryPort;
 use Corvant\Ports\SessionStorePort;
 use Corvant\Ports\TenantRepositoryPort;
 use Corvant\Ports\TenantResolverPort;
@@ -49,8 +56,13 @@ class CorvantServiceProvider extends ServiceProvider
         });
 
         $this->app->scoped(CurrentTenant::class);
+        $this->app->scoped(CurrentUser::class);
 
         $this->app->singleton(TenancyService::class);
+
+        $this->app->bind(RoleRepositoryPort::class, EloquentRoleRepository::class);
+        $this->app->singleton(PermissionResolver::class);
+        $this->app->singleton(RoleService::class);
     }
 
     public function boot(): void
@@ -59,6 +71,8 @@ class CorvantServiceProvider extends ServiceProvider
 
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('corvant.resolve-tenant', ResolveTenantMiddleware::class);
+        $router->aliasMiddleware('corvant.authenticate', AuthenticateSessionMiddleware::class);
+        $router->aliasMiddleware('permission', PermissionMiddleware::class);
 
         $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
 
