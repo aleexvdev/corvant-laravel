@@ -16,6 +16,7 @@ use Corvant\Adapters\Session\RedisMfaChallengeStore;
 use Corvant\Adapters\Session\RedisSessionStore;
 use Corvant\Adapters\Session\RedisSingleUseTokenStore;
 use Corvant\Domain\Authentication\Services\AuthenticationService;
+use Corvant\Domain\Authentication\Services\SessionManagementService;
 use Corvant\Domain\Mfa\Services\MfaService;
 use Corvant\Domain\Rbac\Services\PermissionResolver;
 use Corvant\Domain\Rbac\Services\RoleService;
@@ -108,6 +109,8 @@ class CorvantServiceProvider extends ServiceProvider
         $this->app->bind(RoleRepositoryPort::class, EloquentRoleRepository::class);
         $this->app->singleton(PermissionResolver::class);
         $this->app->singleton(RoleService::class);
+
+        $this->app->singleton(SessionManagementService::class);
 
         $this->app->singleton(MfaService::class, function ($app): MfaService {
             return new MfaService(
